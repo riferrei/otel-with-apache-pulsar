@@ -14,8 +14,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.riferrei.otel.pulsar.OtelConsumerInterceptor;
-import com.riferrei.otel.pulsar.OtelProducerInterceptor;
+import com.riferrei.otel.pulsar.OTelConsumerInterceptor;
+import com.riferrei.otel.pulsar.OTelProducerInterceptor;
 import com.riferrei.otel.pulsar.domain.Brand;
 
 @Configuration
@@ -35,7 +35,7 @@ public class PulsarConfiguration {
 	public Producer<Brand> producer(PulsarClient pulsarClient) throws PulsarClientException {
 		return pulsarClient.newProducer(Schema.JSON(Brand.class))
 			.topic("estimates")
-			.intercept(new OtelProducerInterceptor())
+			.intercept(new OTelProducerInterceptor())
 			.create();
 	}
 
@@ -48,7 +48,7 @@ public class PulsarConfiguration {
 				logger.info(message.getValue().toString());
 				consumer.acknowledgeAsync(message);
 			})
-			.intercept(new OtelConsumerInterceptor())
+			.intercept(new OTelConsumerInterceptor())
 			.subscribe();
 	}
 

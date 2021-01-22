@@ -17,10 +17,10 @@ import io.opentelemetry.context.propagation.TextMapPropagator;
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 
 @SuppressWarnings("rawtypes")
-public class OtelProducerInterceptor implements ProducerInterceptor {
+public class OTelProducerInterceptor implements ProducerInterceptor {
 
     private final Tracer tracer =
-        GlobalOpenTelemetry.getTracer(OtelProducerInterceptor.class.getName(), "1.0");
+        GlobalOpenTelemetry.getTracer(OTelProducerInterceptor.class.getName(), "1.0");
 
     @Override
     public boolean eligible(Message message) {

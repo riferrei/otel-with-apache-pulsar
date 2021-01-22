@@ -18,10 +18,10 @@ import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapPropagator;
 
 @SuppressWarnings("rawtypes")
-public class OtelConsumerInterceptor implements ConsumerInterceptor {
+public class OTelConsumerInterceptor implements ConsumerInterceptor {
 
     private final Tracer tracer =
-        GlobalOpenTelemetry.getTracer(OtelConsumerInterceptor.class.getName(), "1.0");
+        GlobalOpenTelemetry.getTracer(OTelConsumerInterceptor.class.getName(), "1.0");
 
     private final Map<MessageId, Context> cache = new ConcurrentHashMap<>();
 
