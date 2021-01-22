@@ -10,7 +10,7 @@ By using Elastic APM folks from Ops gain instant insight about transactions, gra
 
 As you can see in the timeline above, as part of the `estimate` operation there is a step that feeds the analytics platform currently implemented using Pulsar. The child operations `estimates send` and `estimates receive` represent the usage of producers and consumers from Pulsar in the code — that write and read messages in a topic called `estimates`.
 
-This is the part that this repository aims to address. Since there is no support for Pulsar in the [Java agent for OpenTelemetry](https://github.com/open-telemetry/opentelemetry-java-instrumentation), the usage of Pulsar in this microservice would create "black holes" in the overall transaction, compromising the Ops team ability to diagnose for example — when the producer or the consumer from Pulsar could be affecting the transaction's availability or performance.
+This is the part that this repository aims to address. Since there is no official support for Pulsar in the [Java agent for OpenTelemetry](https://github.com/open-telemetry/opentelemetry-java-instrumentation), the usage of Pulsar in this microservice would create "black holes" in the overall transaction, compromising the Ops team ability to diagnose for example — when the producer or the consumer from Pulsar could be affecting the transaction's availability or performance.
 
 To address this problem Pulsar native interceptors were created. By using interceptors developers can simply hook up them into their producers and consumers and rest assured that any interaction with them will generate the appropriate spans compatible with the OpenTelemetry specification.
 
