@@ -1,0 +1,27 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:55680
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+extensions:
+  health_check:
+
+exporters:
+  elastic:
+    #apm_server_url: "http://apm-server:8200"
+    apm_server_url: "https://ba562db0be21487d8150ad75a163c38c.apm.us-east4.gcp.elastic-cloud.com:443"
+    secret_token: "Y2BCpvPZQeqLEDE6qO"
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [elastic]

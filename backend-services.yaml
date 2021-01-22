@@ -1,0 +1,52 @@
+version: '3.0'
+
+services:
+
+  redis-server:
+    image: redis:latest
+    container_name: redis-server
+    hostname: redis-server
+    ports:
+      - 6379:6379
+    networks:
+    - otel-with-pulsar
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '2m'
+        max-file: '5'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s      
+
+  pulsar-server:
+    command: bin/pulsar standalone
+    image: apachepulsar/pulsar:2.7.0
+    container_name: pulsar-server
+    hostname: pulsar-server
+    ports:
+    - 8080:8080
+    - 6650:6650
+    networks:
+    - otel-with-pulsar
+    healthcheck:
+      interval: 10s
+      retries: 20
+      test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:8080/admin/v2/clusters/standalone
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib-dev
+    container_name: otel-collector
+    hostname: otel-collector
+    command: ["--config=/etc/collector-config.yaml"]
+    volumes:
+      - ./collector-config.yaml:/etc/collector-config.yaml
+    ports:
+      - "13133:13133"
+      - "55680:55680"
+    networks:
+    - otel-with-pulsar
+
+networks:
+  otel-with-pulsar:
+    driver: bridge

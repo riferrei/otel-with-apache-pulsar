@@ -1,0 +1,14 @@
+.git
+.cache
+.target
+.vscode
+.project
+.settings
+.classpath
+README.md
+
+backend-services.yaml
+collector-config.yaml
+docker-compose.yaml
+opentelemetry-javaagent-all.jar
+run-locally.sh

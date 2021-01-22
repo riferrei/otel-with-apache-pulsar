@@ -1,0 +1,9 @@
+/home/riferrei/Work/Stage/otel-with-apache-pulsar/src/main/java/com/riferrei/otel/pulsar/domain/Brand.java
+/home/riferrei/Work/Stage/otel-with-apache-pulsar/src/main/java/com/riferrei/otel/pulsar/BrandEstimatorApp.java
+/home/riferrei/Work/Stage/otel-with-apache-pulsar/src/main/java/com/riferrei/otel/pulsar/domain/BrandRepository.java
+/home/riferrei/Work/Stage/otel-with-apache-pulsar/src/main/java/com/riferrei/otel/pulsar/OtelConsumerInterceptor.java
+/home/riferrei/Work/Stage/otel-with-apache-pulsar/src/main/java/com/riferrei/otel/pulsar/BrandEstimatorController.java
+/home/riferrei/Work/Stage/otel-with-apache-pulsar/src/main/java/com/riferrei/otel/pulsar/config/RedisConfiguration.java
+/home/riferrei/Work/Stage/otel-with-apache-pulsar/src/main/java/com/riferrei/otel/pulsar/config/CustomCorsConfig.java
+/home/riferrei/Work/Stage/otel-with-apache-pulsar/src/main/java/com/riferrei/otel/pulsar/config/PulsarConfiguration.java
+/home/riferrei/Work/Stage/otel-with-apache-pulsar/src/main/java/com/riferrei/otel/pulsar/OtelProducerInterceptor.java
