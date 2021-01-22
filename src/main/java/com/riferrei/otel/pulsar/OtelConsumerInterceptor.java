@@ -27,14 +27,14 @@ public class OtelConsumerInterceptor implements ConsumerInterceptor {
 
     @Override
     public Message beforeConsume(Consumer consumer, Message message) {
-        Context extractedContext = readContextFromMessage(message);
+        Context extractedContext = extractContextFromMessage(message);
         if (extractedContext != null) {
             cache.put(message.getMessageId(), extractedContext);
         }
         return message;
     }
 
-    private Context readContextFromMessage(Message message) {
+    private Context extractContextFromMessage(Message message) {
 
         TextMapPropagator.Getter<Message<?>> getter =
             new TextMapPropagator.Getter<Message<?>>() {
