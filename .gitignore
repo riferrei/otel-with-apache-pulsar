@@ -1,9 +1,9 @@
 .git
 .cache
-.target
 .vscode
 .project
 .settings
 .classpath
 
+target
 opentelemetry-javaagent-all.jar
