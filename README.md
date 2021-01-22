@@ -51,18 +51,12 @@ docker-compose up -d
 curl -X GET http://localhost:8888/estimate?brand=ferrari
 ```
 
-#### 4. Play with Elastic APM
+## Playing with Elastic APM
 
 Open a browser and go to the follwing URL:
 
 ```bash
 http://localhost:5601/app/apm
-```
-
-#### 5. Stop the microservice
-
-```bash
-docker-compose down
 ```
 
 # License
