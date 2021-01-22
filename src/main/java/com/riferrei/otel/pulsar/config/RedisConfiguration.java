@@ -13,12 +13,12 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 @EnableRedisRepositories
 public class RedisConfiguration {
 
-	@Value("${redis.hostname}")
-	private String hostname;
+    @Value("${redis.hostname}")
+    private String hostname;
 
-	@Value("${redis.port}")
+    @Value("${redis.port}")
     private String port;
-    
+
     @Bean
     public RedisConnectionFactory connectionFactory() {
         return new JedisConnectionFactory(new RedisStandaloneConfiguration(
@@ -26,10 +26,10 @@ public class RedisConfiguration {
     }
 
     @Bean
-    public RedisTemplate<?,?> redisTemplate(RedisConnectionFactory connectionFactory) {
+    public RedisTemplate<?, ?> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<?, ?> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);
         return redisTemplate;
     }
-    
+
 }

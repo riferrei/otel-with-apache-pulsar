@@ -23,8 +23,8 @@ public class BrandEstimatorController {
 
     private final Logger logger = LoggerFactory.getLogger(BrandEstimatorController.class);
 
-	@Autowired
-	private BrandRepository brandRepository;
+    @Autowired
+    private BrandRepository brandRepository;
 
     @RequestMapping(method = RequestMethod.GET, value = "/estimate")
     public ResponseEntity<Brand> estimate(@RequestParam String brand) {

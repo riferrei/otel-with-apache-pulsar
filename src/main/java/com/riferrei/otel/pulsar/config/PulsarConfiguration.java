@@ -21,16 +21,14 @@ import com.riferrei.otel.pulsar.domain.Brand;
 @Configuration
 public class PulsarConfiguration {
 
-    private final Logger logger = LoggerFactory.getLogger(PulsarConfiguration.class);
+	private final Logger logger = LoggerFactory.getLogger(PulsarConfiguration.class);
 
 	@Value("${pulsar.service.url}")
-    private String pulsarServiceURL;
-    
+	private String pulsarServiceURL;
+
 	@Bean
 	public PulsarClient pulsarClient() throws PulsarClientException {
-		return PulsarClient.builder()
-			.serviceUrl(pulsarServiceURL)
-			.build();
+		return PulsarClient.builder().serviceUrl(pulsarServiceURL).build();
 	}
 
 	@Bean
@@ -41,10 +39,10 @@ public class PulsarConfiguration {
 			.create();
 	}
 
-	@Bean @SuppressWarnings({"varargs", "unchecked"})
+	@Bean
+	@SuppressWarnings({ "varargs", "unchecked" })
 	public Consumer<Brand> consumer(PulsarClient pulsarClient) throws PulsarClientException {
-		return pulsarClient.newConsumer(Schema.JSON(Brand.class))
-			.subscriptionName(PulsarConfiguration.class.getName())
+		return pulsarClient.newConsumer(Schema.JSON(Brand.class)).subscriptionName(PulsarConfiguration.class.getName())
 			.topic("estimates")
 			.messageListener((Consumer<Brand> consumer, Message<Brand> message) -> {
 				logger.info(message.getValue().toString());
@@ -53,5 +51,5 @@ public class PulsarConfiguration {
 			.intercept(new OtelConsumerInterceptor())
 			.subscribe();
 	}
-    
+
 }
