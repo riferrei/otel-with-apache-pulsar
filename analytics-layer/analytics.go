@@ -19,6 +19,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	serviceName    = "analytics-layer"
+	serviceVersion = "1.0"
+	topicName      = "estimates"
+)
+
 func main() {
 
 	/***************************************************/
@@ -38,8 +44,8 @@ func main() {
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String("analytics-layer"),
-			semconv.ServiceVersionKey.String("1.0"),
+			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceVersionKey.String(serviceVersion),
 			semconv.TelemetrySDKNameKey.String("opentelemetry"),
 			semconv.TelemetrySDKLanguageKey.String("go"),
 			semconv.TelemetrySDKVersionKey.String("1.15.6")))
@@ -53,7 +59,7 @@ func main() {
 
 	otel.SetTracerProvider(tracerProvider)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
-	tracer := otel.Tracer("analytics-layer")
+	tracer := otel.Tracer(serviceName)
 
 	/***************************************************/
 	/***** Connect with Pulsar to process messages *****/
@@ -71,8 +77,8 @@ func main() {
 
 	channel := make(chan pulsar.ConsumerMessage, 100)
 	options := pulsar.ConsumerOptions{
-		Topic:            "estimates",
-		SubscriptionName: "analytics-layer",
+		Topic:            topicName,
+		SubscriptionName: serviceName,
 		Type:             pulsar.Shared,
 	}
 	options.MessageChannel = channel
@@ -90,11 +96,11 @@ func main() {
 		message := consumerMessage.Message
 
 		extractedContext := otel.GetTextMapPropagator().Extract(ctx, PulsarCarrier{message})
-		_, receiveSpan := tracer.Start(extractedContext, "estimates receive",
+		_, receiveSpan := tracer.Start(extractedContext, topicName+" receive",
 			trace.WithAttributes(
 				semconv.MessagingSystemKey.String("pulsar"),
 				semconv.MessagingDestinationKindKey.String("topic"),
-				semconv.MessagingDestinationKey.String("estimates"),
+				semconv.MessagingDestinationKey.String(topicName),
 			))
 
 		var estimate Estimate
