@@ -30,9 +30,9 @@ public class BrandEstimatorController {
     public ResponseEntity<Brand> estimate(@RequestParam String brand) {
         brand = brand.toLowerCase();
         if (brandRepository.existsById(brand)) {
-            Brand brandResult = brandRepository.findById(brand).get();
-            feedAnalytics(brandResult);
-            return ResponseEntity.ok(brandResult);
+            Brand brandEntity = brandRepository.findById(brand).get();
+            feedAnalytics(brandEntity);
+            return ResponseEntity.ok(brandEntity);
         } else {
             return ResponseEntity.notFound().build();
         }
@@ -42,9 +42,9 @@ public class BrandEstimatorController {
     private Producer<Brand> producer;
 
     @WithSpan
-    private void feedAnalytics(Brand brandResult) {
+    private void feedAnalytics(Brand brandEntity) {
         try {
-            producer.send(brandResult);
+            producer.send(brandEntity);
         } catch (PulsarClientException pce) {
             logger.debug(pce.getMessage());
         }

@@ -28,6 +28,21 @@ services:
       retries: 10
       test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:8888/actuator/health
 
+  analytics-layer:
+    build:
+      context: analytics-layer
+    image: analytics-layer:latest
+    container_name: analytics-layer
+    hostname: analytics-layer
+    networks:
+      - otel-with-pulsar
+    depends_on:
+      - pulsar-server
+      - otel-collector
+    environment:
+      - PULSAR_SERVICE_URL=pulsar://pulsar-server:6650
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
+
   redis-server:
     image: redis:latest
     container_name: redis-server

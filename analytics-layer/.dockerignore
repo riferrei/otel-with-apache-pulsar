@@ -1,0 +1,10 @@
+.git
+.cache
+.target
+.vscode
+.project
+.settings
+.classpath
+target
+analytics-layer
+go.sum

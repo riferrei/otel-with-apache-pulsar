@@ -6,22 +6,22 @@ import org.springframework.data.redis.core.RedisHash;
 @RedisHash("Brand")
 public class Brand {
 
-    @Id private String id;
+    @Id private String brand;
     private double price;
 
     public Brand() {}
 
-    public Brand(String id, double price) {
-        setId(id);
+    public Brand(String brand, double price) {
+        setBrand(brand);
         setPrice(price);
     }
 
-    public String getId() {
-        return id;
+    public String getBrand() {
+        return brand;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setBrand(String brand) {
+        this.brand = brand;
     }
 
     public double getPrice() {
@@ -34,7 +34,7 @@ public class Brand {
 
     @Override
     public String toString() {
-        return "Brand [id=" + id + ", price=" + price + "]";
+        return "Brand [brand=" + brand + ", price=" + price + "]";
     }
     
 }
