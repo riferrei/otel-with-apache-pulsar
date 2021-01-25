@@ -3,7 +3,8 @@ version: '3.0'
 services:
 
   brand-estimator:
-    build: .
+    build:
+      context: brand-estimator
     image: brand-estimator:latest
     container_name: brand-estimator
     hostname: brand-estimator

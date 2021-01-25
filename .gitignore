@@ -5,5 +5,6 @@
 .settings
 .classpath
 
-target
+brand-estimator/target
 opentelemetry-javaagent-all.jar
+otel-with-apache-pulsar.code-workspace

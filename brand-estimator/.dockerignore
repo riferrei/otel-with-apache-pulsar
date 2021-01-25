@@ -1,0 +1,8 @@
+.git
+.cache
+.target
+.vscode
+.project
+.settings
+.classpath
+target

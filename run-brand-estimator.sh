@@ -2,7 +2,7 @@
 # set -x
 
 # Run a clean build
-mvn clean package -Dmaven.test.skip=true
+mvn -f brand-estimator/pom.xml clean package -Dmaven.test.skip=true
 
 # Download the agent
 AGENT_FILE=opentelemetry-javaagent-all.jar
@@ -21,4 +21,4 @@ export OTEL_EXPORTER=otlp
 export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:55680
 export OTEL_RESOURCE_ATTRIBUTES="service.name=brand-estimator,service.version=1.0"
 
-java -javaagent:./${AGENT_FILE} -jar target/brand-estimator-0.1.0.jar
+java -javaagent:./${AGENT_FILE} -jar brand-estimator/target/brand-estimator-0.1.0.jar
