@@ -4,7 +4,7 @@ This repository contains an example of application that offers users a way to es
 
 <img src="images/transaction-name.png" />
 
-By using Elastic APM folks from Ops gain instant insight about transactions, granting them a way to pragmatically observe when the transaction becomes unavailable or when it contains bottlenecks. More importantly, it allows them to know exactly where in the transaction is the problem. Here is an example of the timeline from the application aforementioned.
+By using Elastic APM folks from Ops gain instant insight about transactions, granting them a way to pragmatically observe when the transaction becomes unavailable or when it contains bottlenecks. More importantly, it allows them to know exactly where in the transaction is the problem. Here is an example of transaction timeline from the application:
 
 <img src="images/transaction-sample.png" />
 
