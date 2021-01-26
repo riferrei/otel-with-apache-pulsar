@@ -42,6 +42,7 @@ services:
     environment:
       - PULSAR_SERVICE_URL=pulsar://pulsar-server:6650
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-layer,service.version=1.0
 
   redis-server:
     image: redis:latest

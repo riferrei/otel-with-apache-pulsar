@@ -44,8 +44,6 @@ func main() {
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String(serviceName),
-			semconv.ServiceVersionKey.String(serviceVersion),
 			semconv.TelemetrySDKNameKey.String("opentelemetry"),
 			semconv.TelemetrySDKLanguageKey.String("go"),
 			semconv.TelemetrySDKVersionKey.String("1.15.6")))
