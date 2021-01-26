@@ -19,6 +19,6 @@ export PULSAR_SERVICE_URL=pulsar://localhost:6650
 # OpenTelemetry variables
 export OTEL_EXPORTER=otlp
 export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:55680
-export OTEL_RESOURCE_ATTRIBUTES="service.name=brand-estimator,service.version=1.0"
+export OTEL_RESOURCE_ATTRIBUTES=service.name=brand-estimator,service.version=1.0
 
 java -javaagent:./${AGENT_FILE} -jar brand-estimator/target/brand-estimator-0.1.0.jar

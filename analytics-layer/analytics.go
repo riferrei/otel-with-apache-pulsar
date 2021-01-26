@@ -46,7 +46,7 @@ func main() {
 		resource.WithAttributes(
 			semconv.TelemetrySDKNameKey.String("opentelemetry"),
 			semconv.TelemetrySDKLanguageKey.String("go"),
-			semconv.TelemetrySDKVersionKey.String("1.15.6")))
+			semconv.TelemetrySDKVersionKey.String("v0.16.0")))
 
 	bsp := sdktrace.NewBatchSpanProcessor(exporter)
 	defer bsp.Shutdown(ctx)
