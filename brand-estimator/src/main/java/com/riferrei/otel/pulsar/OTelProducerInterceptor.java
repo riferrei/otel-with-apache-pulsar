@@ -39,7 +39,8 @@ public class OTelProducerInterceptor implements ProducerInterceptor {
 
         try (Scope scope = newContext.makeCurrent()) {
             sendSpan.setAttribute(SemanticAttributes.MESSAGING_SYSTEM, "pulsar");
-            sendSpan.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic");
+            sendSpan.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND,
+                SemanticAttributes.MessagingDestinationKindValues.TOPIC.getValue());
             sendSpan.setAttribute(SemanticAttributes.MESSAGING_DESTINATION, producer.getTopic());
             storeContextOnMessage(newContext, message);
         } finally {
@@ -54,36 +55,35 @@ public class OTelProducerInterceptor implements ProducerInterceptor {
         TextMapPropagator.Setter<Message<?>> setter =
             new TextMapPropagator.Setter<Message<?>>() {
 
-                @Override
-                public void set(Message<?> message, String key, String value) {
-                    MessageImpl<?> msg = null;
-                    if (message instanceof MessageImpl<?>) {
-                        msg = (MessageImpl<?>) message;
-                    } else if (message instanceof TopicMessageImpl<?>) {
-                        msg = (MessageImpl<?>) ((TopicMessageImpl<?>) message).getMessage();
-                    }
-                    if (msg != null) {
-                        msg.getMessageBuilder().addProperties(
-                            PulsarApi.KeyValue.newBuilder()
-                                .setKey(key)
-                                .setValue(value)
-                        );
-                    }
+            @Override
+            public void set(Message<?> message, String key, String value) {
+                MessageImpl<?> msg = null;
+                if (message instanceof MessageImpl<?>) {
+                    msg = (MessageImpl<?>) message;
+                } else if (message instanceof TopicMessageImpl<?>) {
+                    msg = (MessageImpl<?>) ((TopicMessageImpl<?>) message).getMessage();
                 }
+                if (msg != null) {
+                    msg.getMessageBuilder().addProperties(
+                        PulsarApi.KeyValue.newBuilder()
+                        .setKey(key).setValue(value));
+                }
+            }
 
-            };
+        };
 
         GlobalOpenTelemetry.getPropagators().getTextMapPropagator()
             .inject(context, message, setter);
-            
+
     }
 
     @Override
-    public void onSendAcknowledgement(Producer producer, Message message, MessageId msgId, Throwable exception) {
+    public void onSendAcknowledgement(Producer producer, Message message,
+        MessageId msgId, Throwable exception) {
     }
 
     @Override
     public void close() {
     }
-    
+
 }

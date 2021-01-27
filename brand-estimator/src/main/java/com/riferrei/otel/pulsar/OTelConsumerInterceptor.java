@@ -23,13 +23,18 @@ public class OTelConsumerInterceptor implements ConsumerInterceptor {
     private final Tracer tracer =
         GlobalOpenTelemetry.getTracer(OTelConsumerInterceptor.class.getName(), "1.0");
 
-    private final Map<MessageId, Context> cache = new ConcurrentHashMap<>();
+    private final Map<MessageId, Span> cache = new ConcurrentHashMap<>();
 
     @Override
     public Message beforeConsume(Consumer consumer, Message message) {
         Context extractedContext = extractContextFromMessage(message);
         if (extractedContext != null) {
-            cache.put(message.getMessageId(), extractedContext);
+            String spanName = consumer.getTopic() + " receive";
+            Span receiveSpan = tracer.spanBuilder(spanName)
+                .setParent(extractedContext)
+                .setSpanKind(Span.Kind.CONSUMER)
+                .startSpan();
+            cache.put(message.getMessageId(), receiveSpan);
         }
         return message;
     }
@@ -39,17 +44,17 @@ public class OTelConsumerInterceptor implements ConsumerInterceptor {
         TextMapPropagator.Getter<Message<?>> getter =
             new TextMapPropagator.Getter<Message<?>>() {
 
-                @Override
-                public Iterable<String> keys(Message<?> message) {
-                    return message.getProperties().keySet();
-                }
+            @Override
+            public Iterable<String> keys(Message<?> message) {
+                return message.getProperties().keySet();
+            }
 
-                @Override
-                public String get(Message<?> message, String key) {
-                    return message.getProperties().get(key);
-                }
-                
-            };
+            @Override
+            public String get(Message<?> message, String key) {
+                return message.getProperties().get(key);
+            }
+
+        };
 
         return GlobalOpenTelemetry.getPropagators().getTextMapPropagator()
             .extract(Context.current(), message, getter);
@@ -58,18 +63,39 @@ public class OTelConsumerInterceptor implements ConsumerInterceptor {
 
     @Override
     public void onAcknowledge(Consumer consumer, MessageId messageId, Throwable exception) {
+        endSpan(consumer, messageId, exception, AcknowledgeType.Standard);
+    }
+
+    @Override
+    public void onAcknowledgeCumulative(Consumer consumer, MessageId messageId, Throwable exception) {
+        endSpan(consumer, messageId, exception, AcknowledgeType.Cumulative);
+    }
+
+    @Override
+    public void onNegativeAcksSend(Consumer consumer, Set messageIds) {
+        for (Object messageId : messageIds) {
+            endSpan(consumer, (MessageId) messageId, null, AcknowledgeType.Negative);
+        }
+    }
+
+    @Override
+    public void onAckTimeoutSend(Consumer consumer, Set messageIds) {
+        for (Object messageId : messageIds) {
+            endSpan(consumer, (MessageId) messageId, null, AcknowledgeType.Timeout);
+        }
+    }
+
+    private void endSpan(Consumer consumer, MessageId messageId,
+        Throwable exception, AcknowledgeType acknowledgeType) {
         if (cache.containsKey(messageId)) {
+            Span receiveSpan = cache.get(messageId);
             try {
-                Context extractedContext = cache.get(messageId);
-                String spanName = consumer.getTopic() + " receive";
-                Span receiveSpan = tracer.spanBuilder(spanName)
-                    .setParent(extractedContext)
-                    .setSpanKind(Span.Kind.CONSUMER)
-                    .startSpan();
                 try (Scope scope = receiveSpan.makeCurrent()) {
                     receiveSpan.setAttribute(SemanticAttributes.MESSAGING_SYSTEM, "pulsar");
-                    receiveSpan.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND, "topic");
+                    receiveSpan.setAttribute(SemanticAttributes.MESSAGING_DESTINATION_KIND,
+                        SemanticAttributes.MessagingDestinationKindValues.TOPIC.getValue());
                     receiveSpan.setAttribute(SemanticAttributes.MESSAGING_DESTINATION, consumer.getTopic());
+                    receiveSpan.setAttribute("acknowledge.type", acknowledgeType.toString());
                     if (exception != null) {
                         receiveSpan.recordException(exception);
                     }
@@ -82,20 +108,12 @@ public class OTelConsumerInterceptor implements ConsumerInterceptor {
         }
     }
 
-    @Override
-    public void onAcknowledgeCumulative(Consumer consumer, MessageId messageId, Throwable exception) {
-    }
-
-    @Override
-    public void onNegativeAcksSend(Consumer consumer, Set messageIds) {
-    }
-
-    @Override
-    public void onAckTimeoutSend(Consumer consumer, Set messageIds) {
+    private enum AcknowledgeType {
+        Standard, Cumulative, Negative, Timeout
     }
 
     @Override
     public void close() {
     }
-    
+
 }
