@@ -10,8 +10,10 @@ import (
 
 	"github.com/apache/pulsar-client-go/pulsar"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
@@ -24,9 +26,13 @@ import (
 )
 
 const (
-	serviceName    = "analytics-layer"
-	serviceVersion = "1.0"
-	topicName      = "estimates"
+	metricPrefix    = "custom.metric."
+	brandCountName  = metricPrefix + "brand.name"
+	brandCountCount = metricPrefix + "brand.count"
+	brandCountDesc  = "Count the number of estimates per brand"
+	serviceName     = "analytics-layer"
+	serviceVersion  = "1.0"
+	topicName       = "estimates"
 )
 
 func main() {
@@ -87,6 +93,12 @@ func main() {
 	)
 
 	tracer := otel.Tracer(serviceName)
+	meter := global.Meter(serviceName)
+
+	brandCountMetric := metric.Must(meter).
+		NewInt64Counter(
+			brandCountCount,
+			metric.WithDescription(brandCountDesc))
 
 	/***************************************************/
 	/***** Connect with Pulsar to process messages *****/
@@ -140,6 +152,17 @@ func main() {
 				count = count + 1
 			}
 			brandCount[estimate.Brand] = count
+
+			brandCountMetric.Add(ctx, 1,
+				[]attribute.KeyValue{
+					attribute.String(
+						brandCountName,
+						estimate.Brand),
+					attribute.String(
+						brandCountCount,
+						brandCountDesc),
+				}...)
+
 			fmt.Printf("Count for brand '%s': %d\n", estimate.Brand, brandCount[estimate.Brand])
 			consumer.Ack(message)
 			receiveSpan.End()
