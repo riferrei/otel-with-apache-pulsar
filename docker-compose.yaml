@@ -15,13 +15,13 @@ services:
     depends_on:
       - redis-server
       - pulsar-server
-      - otel-collector
+      - apm-server
     environment:
       - REDIS_HOSTNAME=redis-server
       - REDIS_PORT=6379
       - PULSAR_SERVICE_URL=pulsar://pulsar-server:6650
       - OTEL_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://apm-server:8200
       - OTEL_RESOURCE_ATTRIBUTES=service.name=brand-estimator,service.version=1.0
     healthcheck:
       interval: 5s
@@ -38,10 +38,10 @@ services:
       - otel-with-pulsar
     depends_on:
       - pulsar-server
-      - otel-collector
+      - apm-server
     environment:
       - PULSAR_SERVICE_URL=pulsar://pulsar-server:6650
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
+      - OTEL_EXPORTER_OTLP_ENDPOINT=apm-server:8200
       - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-layer,service.version=1.0
 
   redis-server:
@@ -63,7 +63,7 @@ services:
 
   pulsar-server:
     command: bin/pulsar standalone
-    image: apachepulsar/pulsar:2.7.0
+    image: apachepulsar/pulsar:latest
     container_name: pulsar-server
     hostname: pulsar-server
     ports:
@@ -76,24 +76,8 @@ services:
       retries: 20
       test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:8080/admin/v2/clusters/standalone
 
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib-dev
-    container_name: otel-collector
-    hostname: otel-collector
-    command: ["--config=/etc/collector-config.yaml"]
-    volumes:
-      - ./collector-config.yaml:/etc/collector-config.yaml
-    ports:
-      - "13133:13133"
-      - "55680:55680"
-    networks:
-    - otel-with-pulsar
-    depends_on:
-      apm-server:
-        condition: service_healthy    
-
   apm-server:
-    image: docker.elastic.co/apm/apm-server:7.12.1
+    image: docker.elastic.co/apm/apm-server:7.13.1
     container_name: apm-server
     hostname: apm-server
     depends_on:
@@ -121,18 +105,22 @@ services:
       test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:8200/
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.12.1
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.13.1
     container_name: elasticsearch
+    hostname: elasticsearch
     environment:
+    - node.name=es01
     - bootstrap.memory_lock=true
     - cluster.name=docker-cluster
     - cluster.routing.allocation.disk.threshold_enabled=false
     - discovery.type=single-node
-    - ES_JAVA_OPTS=-XX:UseAVX=2 -Xms1g -Xmx1g
+    - ES_JAVA_OPTS=-Xms1g -Xmx1g
     ulimits:
       memlock:
         hard: -1
         soft: -1
+    volumes:
+    - otel-with-pulsar:/usr/share/elasticsearch/data
     ports:
     - 9200:9200
     networks:
@@ -143,8 +131,9 @@ services:
       test: curl -s http://localhost:9200/_cluster/health | grep -vq '"status":"red"'
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:7.12.1
+    image: docker.elastic.co/kibana/kibana:7.13.1
     container_name: kibana
+    hostname: kibana
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -158,7 +147,11 @@ services:
     healthcheck:
       interval: 10s
       retries: 20
-      test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:5601/api/status    
+      test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:5601/api/status
+
+volumes:
+  otel-with-pulsar:
+    driver: local
 
 networks:
   otel-with-pulsar:

@@ -11,11 +11,12 @@ import org.apache.pulsar.client.api.MessageId;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
+import io.opentelemetry.api.trace.attributes.SemanticAttributes;
+import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.context.propagation.TextMapPropagator;
 
 @SuppressWarnings("rawtypes")
 public class OTelConsumerInterceptor implements ConsumerInterceptor {
@@ -32,7 +33,7 @@ public class OTelConsumerInterceptor implements ConsumerInterceptor {
             String spanName = consumer.getTopic() + " receive";
             Span receiveSpan = tracer.spanBuilder(spanName)
                 .setParent(extractedContext)
-                .setSpanKind(Span.Kind.CONSUMER)
+                .setSpanKind(SpanKind.CONSUMER)
                 .startSpan();
             cache.put(message.getMessageId(), receiveSpan);
         }
@@ -41,20 +42,20 @@ public class OTelConsumerInterceptor implements ConsumerInterceptor {
 
     private Context extractContextFromMessage(Message message) {
 
-        TextMapPropagator.Getter<Message<?>> getter =
-            new TextMapPropagator.Getter<Message<?>>() {
+        TextMapGetter<Message<?>> getter =
+            new TextMapGetter<>(){
 
-            @Override
-            public Iterable<String> keys(Message<?> message) {
-                return message.getProperties().keySet();
-            }
-
-            @Override
-            public String get(Message<?> message, String key) {
-                return message.getProperties().get(key);
-            }
-
-        };
+                @Override
+                public String get(Message<?> message, String key) {
+                    return message.getProperties().get(key);
+                }
+    
+                @Override
+                public Iterable<String> keys(Message<?> message) {
+                    return message.getProperties().keySet();
+                }
+                
+            };
 
         return GlobalOpenTelemetry.getPropagators().getTextMapPropagator()
             .extract(Context.current(), message, getter);

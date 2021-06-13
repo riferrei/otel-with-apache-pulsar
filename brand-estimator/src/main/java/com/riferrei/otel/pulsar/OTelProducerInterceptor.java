@@ -10,11 +10,12 @@ import org.apache.pulsar.common.api.proto.PulsarApi;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.trace.attributes.SemanticAttributes;
+import io.opentelemetry.context.propagation.TextMapSetter;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.context.propagation.TextMapPropagator;
-import io.opentelemetry.semconv.trace.attributes.SemanticAttributes;
 
 @SuppressWarnings("rawtypes")
 public class OTelProducerInterceptor implements ProducerInterceptor {
@@ -32,7 +33,7 @@ public class OTelProducerInterceptor implements ProducerInterceptor {
 
         String spanName = producer.getTopic() + " send";
         Span sendSpan = tracer.spanBuilder(spanName)
-            .setSpanKind(Span.Kind.PRODUCER)
+            .setSpanKind(SpanKind.PRODUCER)
             .startSpan();
 
         Context newContext = Context.current().with(sendSpan);
@@ -52,25 +53,25 @@ public class OTelProducerInterceptor implements ProducerInterceptor {
 
     private void storeContextOnMessage(Context context, Message<?> message) {
 
-        TextMapPropagator.Setter<Message<?>> setter =
-            new TextMapPropagator.Setter<Message<?>>() {
+        TextMapSetter<Message<?>> setter =
+            new TextMapSetter<>(){
 
-            @Override
-            public void set(Message<?> message, String key, String value) {
-                MessageImpl<?> msg = null;
-                if (message instanceof MessageImpl<?>) {
-                    msg = (MessageImpl<?>) message;
-                } else if (message instanceof TopicMessageImpl<?>) {
-                    msg = (MessageImpl<?>) ((TopicMessageImpl<?>) message).getMessage();
+                @Override
+                public void set(Message<?> message, String key, String value) {
+                    MessageImpl<?> msg = null;
+                    if (message instanceof MessageImpl<?>) {
+                        msg = (MessageImpl<?>) message;
+                    } else if (message instanceof TopicMessageImpl<?>) {
+                        msg = (MessageImpl<?>) ((TopicMessageImpl<?>) message).getMessage();
+                    }
+                    if (msg != null) {
+                        msg.getMessageBuilder().addProperties(
+                            PulsarApi.KeyValue.newBuilder()
+                            .setKey(key).setValue(value));
+                    }
                 }
-                if (msg != null) {
-                    msg.getMessageBuilder().addProperties(
-                        PulsarApi.KeyValue.newBuilder()
-                        .setKey(key).setValue(value));
-                }
-            }
-
-        };
+                
+            };
 
         GlobalOpenTelemetry.getPropagators().getTextMapPropagator()
             .inject(context, message, setter);

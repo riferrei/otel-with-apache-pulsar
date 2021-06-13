@@ -12,7 +12,11 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
+	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
+	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
+	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv"
@@ -28,35 +32,60 @@ const (
 func main() {
 
 	/***************************************************/
-	/****** Initialize a new OpenTelemetry tracer ******/
+	/****** Creates the background OTel resources ******/
 	/***************************************************/
 
 	ctx := context.Background()
 
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	driver := otlpgrpc.NewDriver(
 		otlpgrpc.WithInsecure(),
-		otlpgrpc.WithEndpoint(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
+		otlpgrpc.WithEndpoint(endpoint),
 	)
 	exporter, err := otlp.NewExporter(ctx, driver)
 	if err != nil {
 		log.Fatalf("%s: %v", "failed to create exporter", err)
 	}
 
-	res, err := resource.New(ctx,
+	res0urce, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.TelemetrySDKNameKey.String("opentelemetry"),
 			semconv.TelemetrySDKLanguageKey.String("go"),
 			semconv.TelemetrySDKVersionKey.String("v0.16.0")))
+	if err != nil {
+		log.Fatalf("%s: %v", "failed to create resource", err)
+	}
 
 	bsp := sdktrace.NewBatchSpanProcessor(exporter)
-	defer bsp.Shutdown(ctx)
-
 	tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithSpanProcessor(bsp),
-		sdktrace.WithResource(res))
+		sdktrace.WithResource(res0urce))
+
+	pusher := controller.New(
+		processor.New(
+			simple.NewWithExactDistribution(),
+			exporter,
+		),
+		controller.WithResource(res0urce),
+		controller.WithExporter(exporter),
+		controller.WithCollectPeriod(5*time.Second),
+	)
+	err = pusher.Start(ctx)
+	if err != nil {
+		log.Fatalf("%s: %v", "failed to start the controller", err)
+	}
+	defer func() { _ = pusher.Stop(ctx) }()
 
 	otel.SetTracerProvider(tracerProvider)
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	global.SetMeterProvider(pusher.MeterProvider())
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.Baggage{},
+			propagation.TraceContext{},
+		),
+	)
+
 	tracer := otel.Tracer(serviceName)
 
 	/***************************************************/
@@ -139,4 +168,9 @@ func (pulsar PulsarCarrier) Get(key string) string {
 // Set stores the key-value pair.
 func (pulsar PulsarCarrier) Set(key string, value string) {
 	pulsar.Message.Properties()[key] = value
+}
+
+// Keys lists the available keys
+func (pulsar PulsarCarrier) Keys() []string {
+	return []string{pulsar.Message.Key()}
 }
