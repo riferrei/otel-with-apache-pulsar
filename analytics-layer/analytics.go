@@ -10,10 +10,8 @@ import (
 
 	"github.com/apache/pulsar-client-go/pulsar"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
-	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
@@ -22,7 +20,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv"
-	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -92,13 +89,7 @@ func main() {
 		),
 	)
 
-	tracer := otel.Tracer(serviceName)
-	meter := global.Meter(serviceName)
-
-	brandCountMetric := metric.Must(meter).
-		NewInt64Counter(
-			brandCountCount,
-			metric.WithDescription(brandCountDesc))
+	// tracer := otel.Tracer(serviceName)
 
 	/***************************************************/
 	/***** Connect with Pulsar to process messages *****/
@@ -134,14 +125,6 @@ func main() {
 
 		message := consumerMessage.Message
 
-		extractedContext := otel.GetTextMapPropagator().Extract(ctx, PulsarCarrier{message})
-		_, receiveSpan := tracer.Start(extractedContext, topicName+" receive",
-			trace.WithAttributes(
-				semconv.MessagingSystemKey.String("pulsar"),
-				semconv.MessagingDestinationKindKey.String("topic"),
-				semconv.MessagingDestinationKey.String(topicName),
-			))
-
 		var estimate Estimate
 		err := json.Unmarshal(message.Payload(), &estimate)
 		if err == nil {
@@ -153,19 +136,8 @@ func main() {
 			}
 			brandCount[estimate.Brand] = count
 
-			brandCountMetric.Add(ctx, 1,
-				[]attribute.KeyValue{
-					attribute.String(
-						brandCountName,
-						estimate.Brand),
-					attribute.String(
-						brandCountCount,
-						brandCountDesc),
-				}...)
-
 			fmt.Printf("Count for brand '%s': %d\n", estimate.Brand, brandCount[estimate.Brand])
 			consumer.Ack(message)
-			receiveSpan.End()
 		}
 
 	}
@@ -176,24 +148,4 @@ func main() {
 type Estimate struct {
 	Brand string  `json:"brand"`
 	Price float32 `json:"price"`
-}
-
-// PulsarCarrier type
-type PulsarCarrier struct {
-	Message pulsar.Message
-}
-
-// Get returns the value associated with the passed key.
-func (pulsar PulsarCarrier) Get(key string) string {
-	return pulsar.Message.Properties()[key]
-}
-
-// Set stores the key-value pair.
-func (pulsar PulsarCarrier) Set(key string, value string) {
-	pulsar.Message.Properties()[key] = value
-}
-
-// Keys lists the available keys
-func (pulsar PulsarCarrier) Keys() []string {
-	return []string{pulsar.Message.Key()}
 }

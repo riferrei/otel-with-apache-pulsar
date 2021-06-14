@@ -34,7 +34,7 @@ public class PulsarConfiguration {
 	public Producer<Brand> producer(PulsarClient pulsarClient) throws PulsarClientException {
 		return pulsarClient.newProducer(Schema.JSON(Brand.class))
 			.topic("estimates")
-			.intercept(new OTelProducerInterceptor())
+			//.intercept(new OTelProducerInterceptor())
 			.create();
 	}
 
