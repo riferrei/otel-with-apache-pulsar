@@ -35,7 +35,7 @@ services:
       test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:8080/admin/v2/clusters/standalone
 
   apm-server:
-    image: docker.elastic.co/apm/apm-server:7.13.1
+    image: docker.elastic.co/apm/apm-server:7.14.1
     container_name: apm-server
     hostname: apm-server
     depends_on:
@@ -63,7 +63,7 @@ services:
       test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:8200/
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.13.1
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.1
     container_name: elasticsearch
     hostname: elasticsearch
     environment:
@@ -89,7 +89,7 @@ services:
       test: curl -s http://localhost:9200/_cluster/health | grep -vq '"status":"red"'
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:7.13.1
+    image: docker.elastic.co/kibana/kibana:7.14.1
     container_name: kibana
     hostname: kibana
     depends_on:
