@@ -1,12 +1,14 @@
 package com.riferrei.otel.pulsar;
 
+import java.util.List;
+
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.interceptor.ProducerInterceptor;
 import org.apache.pulsar.client.impl.MessageImpl;
 import org.apache.pulsar.client.impl.TopicMessageImpl;
-import org.apache.pulsar.common.api.proto.PulsarApi;
+import org.apache.pulsar.common.api.proto.KeyValue;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -65,9 +67,10 @@ public class OTelProducerInterceptor implements ProducerInterceptor {
                         msg = (MessageImpl<?>) ((TopicMessageImpl<?>) message).getMessage();
                     }
                     if (msg != null) {
-                        msg.getMessageBuilder().addProperties(
-                            PulsarApi.KeyValue.newBuilder()
-                            .setKey(key).setValue(value));
+                        KeyValue keyValue = msg.getMessageBuilder().addProperty()
+                            .setKey(key)
+                            .setValue(value);
+                        msg.getMessageBuilder().addAllProperties(List.of(keyValue));
                     }
                 }
                 

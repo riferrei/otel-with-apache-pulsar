@@ -21,8 +21,9 @@ public class RedisConfiguration {
 
     @Bean
     public RedisConnectionFactory connectionFactory() {
-        return new JedisConnectionFactory(new RedisStandaloneConfiguration(
-            hostname, Integer.parseInt(port)));
+        return new JedisConnectionFactory(
+            new RedisStandaloneConfiguration(hostname,
+                Integer.parseInt(port)));
     }
 
     @Bean

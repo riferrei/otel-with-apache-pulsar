@@ -6,7 +6,7 @@ mvn -f brand-estimator/pom.xml clean package -Dmaven.test.skip=true
 
 # Download the agent
 AGENT_FILE=opentelemetry-javaagent-all.jar
-LATEST_AGENT_URL=https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.2.0/opentelemetry-javaagent-all.jar
+LATEST_AGENT_URL=https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.11.0/opentelemetry-javaagent.jar
 if [ ! -f "${AGENT_FILE}" ]; then
   curl -L ${LATEST_AGENT_URL} --output ${AGENT_FILE}
 fi
