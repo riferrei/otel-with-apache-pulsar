@@ -11,8 +11,8 @@ import (
 	"github.com/apache/pulsar-client-go/pulsar"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
@@ -21,7 +21,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -44,53 +44,74 @@ func main() {
 	ctx := context.Background()
 
 	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	driver := otlpgrpc.NewDriver(
-		otlpgrpc.WithInsecure(),
-		otlpgrpc.WithEndpoint(endpoint),
-	)
-	exporter, err := otlp.NewExporter(ctx, driver)
-	if err != nil {
-		log.Fatalf("%s: %v", "failed to create exporter", err)
-	}
 
 	res0urce, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.TelemetrySDKNameKey.String("opentelemetry"),
-			semconv.TelemetrySDKLanguageKey.String("go"),
-			semconv.TelemetrySDKVersionKey.String("v0.16.0")))
+			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceVersionKey.String(serviceVersion),
+			semconv.TelemetrySDKVersionKey.String("v1.4.1"),
+			semconv.TelemetrySDKLanguageGo))
 	if err != nil {
 		log.Fatalf("%s: %v", "failed to create resource", err)
 	}
 
-	bsp := sdktrace.NewBatchSpanProcessor(exporter)
-	tracerProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithSpanProcessor(bsp),
-		sdktrace.WithResource(res0urce))
+	// Setup the tracing
 
-	pusher := controller.New(
-		processor.New(
-			simple.NewWithExactDistribution(),
-			exporter,
-		),
-		controller.WithResource(res0urce),
-		controller.WithExporter(exporter),
-		controller.WithCollectPeriod(5*time.Second),
-	)
-	err = pusher.Start(ctx)
-	if err != nil {
-		log.Fatalf("%s: %v", "failed to start the controller", err)
+	traceOpts := []otlptracegrpc.Option{
+		otlptracegrpc.WithEndpoint(endpoint),
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithTimeout(5 * time.Second),
 	}
-	defer func() { _ = pusher.Stop(ctx) }()
 
-	otel.SetTracerProvider(tracerProvider)
-	global.SetMeterProvider(pusher.MeterProvider())
+	traceExporter, err := otlptracegrpc.New(ctx, traceOpts...)
+	if err != nil {
+		log.Fatalf("%s: %v", "failed to create exporter", err)
+	}
+
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithResource(res0urce),
+		sdktrace.WithSpanProcessor(
+			sdktrace.NewBatchSpanProcessor(traceExporter)),
+	))
+
 	otel.SetTextMapPropagator(
 		propagation.NewCompositeTextMapPropagator(
 			propagation.Baggage{},
 			propagation.TraceContext{},
 		),
 	)
+
+	// Setup the metrics
+
+	metricOpts := []otlpmetricgrpc.Option{
+		otlpmetricgrpc.WithEndpoint(endpoint),
+		otlpmetricgrpc.WithInsecure(),
+		otlpmetricgrpc.WithTimeout(5 * time.Second),
+	}
+
+	metricExporter, err := otlpmetricgrpc.New(ctx, metricOpts...)
+	if err != nil {
+		log.Fatalf("%s: %v", "failed to create exporter", err)
+	}
+
+	pusher := controller.New(
+		processor.NewFactory(
+			simple.NewWithHistogramDistribution(),
+			metricExporter,
+		),
+		controller.WithResource(res0urce),
+		controller.WithExporter(metricExporter),
+		controller.WithCollectPeriod(5*time.Second),
+	)
+
+	err = pusher.Start(ctx)
+	if err != nil {
+		log.Fatalf("%s: %v", "failed to start the controller", err)
+	}
+	defer func() { _ = pusher.Stop(ctx) }()
+
+	global.SetMeterProvider(pusher)
 
 	tracer := otel.Tracer(serviceName)
 	meter := global.Meter(serviceName)
