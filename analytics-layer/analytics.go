@@ -35,11 +35,12 @@ const (
 	topicName       = "estimates"
 )
 
-func main() {
+var (
+	tracer trace.Tracer
+	meter  metric.Meter
+)
 
-	/***************************************************/
-	/****** Creates the background OTel resources ******/
-	/***************************************************/
+func main() {
 
 	ctx := context.Background()
 
@@ -55,76 +56,19 @@ func main() {
 		log.Fatalf("%s: %v", "failed to create resource", err)
 	}
 
-	// Setup the tracing
+	// Initialize the tracer provider
+	initTracer(ctx, endpoint, res0urce)
 
-	traceOpts := []otlptracegrpc.Option{
-		otlptracegrpc.WithEndpoint(endpoint),
-		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithTimeout(5 * time.Second),
-	}
+	// Initialize the meter provider
+	initMeter(ctx, endpoint, res0urce)
 
-	traceExporter, err := otlptracegrpc.New(ctx, traceOpts...)
-	if err != nil {
-		log.Fatalf("%s: %v", "failed to create exporter", err)
-	}
-
-	otel.SetTracerProvider(sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithResource(res0urce),
-		sdktrace.WithSpanProcessor(
-			sdktrace.NewBatchSpanProcessor(traceExporter)),
-	))
-
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
-			propagation.Baggage{},
-			propagation.TraceContext{},
-		),
-	)
-
-	// Setup the metrics
-
-	metricOpts := []otlpmetricgrpc.Option{
-		otlpmetricgrpc.WithEndpoint(endpoint),
-		otlpmetricgrpc.WithInsecure(),
-		otlpmetricgrpc.WithTimeout(5 * time.Second),
-	}
-
-	metricExporter, err := otlpmetricgrpc.New(ctx, metricOpts...)
-	if err != nil {
-		log.Fatalf("%s: %v", "failed to create exporter", err)
-	}
-
-	pusher := controller.New(
-		processor.NewFactory(
-			simple.NewWithHistogramDistribution(),
-			metricExporter,
-		),
-		controller.WithResource(res0urce),
-		controller.WithExporter(metricExporter),
-		controller.WithCollectPeriod(5*time.Second),
-	)
-
-	err = pusher.Start(ctx)
-	if err != nil {
-		log.Fatalf("%s: %v", "failed to start the controller", err)
-	}
-	defer func() { _ = pusher.Stop(ctx) }()
-
-	global.SetMeterProvider(pusher)
-
-	tracer := otel.Tracer(serviceName)
-	meter := global.Meter(serviceName)
-
+	// Create the brand count metric
 	brandCountMetric := metric.Must(meter).
 		NewInt64Counter(
 			brandCountCount,
 			metric.WithDescription(brandCountDesc))
 
-	/***************************************************/
-	/***** Connect with Pulsar to process messages *****/
-	/***************************************************/
-
+	// Consume messages from Pulsar
 	client, err := pulsar.NewClient(pulsar.ClientOptions{
 		URL:               os.Getenv("PULSAR_SERVICE_URL"),
 		OperationTimeout:  30 * time.Second,
@@ -155,7 +99,7 @@ func main() {
 
 		message := consumerMessage.Message
 
-		extractedContext := otel.GetTextMapPropagator().Extract(ctx, PulsarCarrier{message})
+		extractedContext := otel.GetTextMapPropagator().Extract(ctx, pulsarCarrier{message})
 		_, receiveSpan := tracer.Start(extractedContext, topicName+" receive",
 			trace.WithAttributes(
 				semconv.MessagingSystemKey.String("pulsar"),
@@ -163,14 +107,19 @@ func main() {
 				semconv.MessagingDestinationKey.String(topicName),
 			))
 
-		var estimate Estimate
+		estimate := struct {
+			Brand string  `json:"brand"`
+			Price float32 `json:"price"`
+		}{}
 		err := json.Unmarshal(message.Payload(), &estimate)
+
 		if err == nil {
+
 			count := brandCount[estimate.Brand]
 			if count == 0 {
 				count = 1
 			} else {
-				count = count + 1
+				count++
 			}
 			brandCount[estimate.Brand] = count
 
@@ -179,42 +128,96 @@ func main() {
 					attribute.String(
 						brandCountName,
 						estimate.Brand),
-					attribute.String(
-						brandCountCount,
-						brandCountDesc),
 				}...)
 
 			fmt.Printf("Count for brand '%s': %d\n", estimate.Brand, brandCount[estimate.Brand])
 			consumer.Ack(message)
 			receiveSpan.End()
+
 		}
 
 	}
 
 }
 
-// Estimate type
-type Estimate struct {
-	Brand string  `json:"brand"`
-	Price float32 `json:"price"`
+func initTracer(ctx context.Context, endpoint string,
+	res0urce *resource.Resource) {
+
+	traceOpts := []otlptracegrpc.Option{
+		otlptracegrpc.WithEndpoint(endpoint),
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithTimeout(5 * time.Second),
+	}
+
+	traceExporter, err := otlptracegrpc.New(ctx, traceOpts...)
+	if err != nil {
+		log.Fatalf("%s: %v", "failed to create exporter", err)
+	}
+
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithResource(res0urce),
+		sdktrace.WithSpanProcessor(
+			sdktrace.NewBatchSpanProcessor(traceExporter)),
+	))
+
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.Baggage{},
+			propagation.TraceContext{},
+		),
+	)
+
+	tracer = otel.Tracer(serviceName)
+
 }
 
-// PulsarCarrier type
-type PulsarCarrier struct {
+func initMeter(ctx context.Context, endpoint string,
+	res0urce *resource.Resource) {
+
+	metricOpts := []otlpmetricgrpc.Option{
+		otlpmetricgrpc.WithEndpoint(endpoint),
+		otlpmetricgrpc.WithInsecure(),
+		otlpmetricgrpc.WithTimeout(5 * time.Second),
+	}
+
+	metricExporter, err := otlpmetricgrpc.New(ctx, metricOpts...)
+	if err != nil {
+		log.Fatalf("%s: %v", "failed to create exporter", err)
+	}
+
+	pusher := controller.New(
+		processor.NewFactory(
+			simple.NewWithHistogramDistribution(),
+			metricExporter,
+		),
+		controller.WithResource(res0urce),
+		controller.WithExporter(metricExporter),
+		controller.WithCollectPeriod(5*time.Second),
+	)
+
+	err = pusher.Start(ctx)
+	if err != nil {
+		log.Fatalf("%s: %v", "failed to start the controller", err)
+	}
+
+	global.SetMeterProvider(pusher)
+	meter = global.Meter(serviceName)
+
+}
+
+type pulsarCarrier struct {
 	Message pulsar.Message
 }
 
-// Get returns the value associated with the passed key.
-func (pulsar PulsarCarrier) Get(key string) string {
+func (pulsar pulsarCarrier) Get(key string) string {
 	return pulsar.Message.Properties()[key]
 }
 
-// Set stores the key-value pair.
-func (pulsar PulsarCarrier) Set(key string, value string) {
+func (pulsar pulsarCarrier) Set(key string, value string) {
 	pulsar.Message.Properties()[key] = value
 }
 
-// Keys lists the available keys
-func (pulsar PulsarCarrier) Keys() []string {
+func (pulsar pulsarCarrier) Keys() []string {
 	return []string{pulsar.Message.Key()}
 }
