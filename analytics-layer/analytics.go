@@ -105,6 +105,7 @@ func main() {
 				semconv.MessagingSystemKey.String("pulsar"),
 				semconv.MessagingDestinationKindKey.String("topic"),
 				semconv.MessagingDestinationKey.String(topicName),
+				semconv.MessagingOperationReceive,
 			))
 
 		estimate := struct {
